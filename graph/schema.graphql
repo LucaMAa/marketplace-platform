@@ -1,0 +1,209 @@
+scalar Time
+scalar Map
+
+# ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum RequestStatus {
+  pending
+  matched
+  completed
+  cancelled
+}
+
+enum MerchantType {
+  pharmacy
+  hardware
+  grocery
+  electronics
+  other
+}
+
+enum MessageType {
+  request
+  response
+  chat
+}
+
+# ─── Types ───────────────────────────────────────────────────────────────────
+
+type User {
+  id: ID!
+  email: String!
+  name: String!
+  latitude: Float!
+  longitude: Float!
+  address: String!
+  createdAt: Time!
+}
+
+type Merchant {
+  id: ID!
+  email: String!
+  businessName: String!
+  type: MerchantType!
+  status: String!
+  latitude: Float!
+  longitude: Float!
+  address: String!
+  city: String!
+  phone: String!
+  website: String
+  lastActiveAt: Time
+  createdAt: Time!
+}
+
+type Request {
+  id: ID!
+  userID: ID!
+  productCode: String!
+  productName: String!
+  quantity: Int!
+  status: RequestStatus!
+  latitude: Float!
+  longitude: Float!
+  radius: Int!
+  expiresAt: Time!
+  createdAt: Time!
+}
+
+type ChatMessage {
+  id: ID!
+  requestID: ID!
+  userID: ID
+  merchantID: ID
+  type: MessageType!
+  content: String!
+  hasProduct: Boolean!
+  canOrder: Boolean!
+  price: Float
+  createdAt: Time!
+}
+
+type MerchantNotification {
+  id: ID!
+  merchantID: ID!
+  requestID: ID!
+  type: String!
+  isRead: Boolean!
+  createdAt: Time!
+}
+
+type Inventory {
+  id: ID!
+  merchantID: ID!
+  productID: ID!
+  quantity: Int!
+  canOrder: Boolean!
+  price: Float
+  lastUpdate: Time!
+}
+
+type Product {
+  id: ID!
+  name: String!
+  description: String!
+  code: String!
+  category: String!
+}
+
+type ProductInsights {
+  productCode: String!
+  globalRequests: Int!
+  localRequests: Int!
+}
+
+# Auth payloads
+type AuthUserPayload {
+  token: String!
+  user: User!
+}
+
+type AuthMerchantPayload {
+  token: String!
+  merchant: Merchant!
+}
+
+# ─── Queries ─────────────────────────────────────────────────────────────────
+
+type Query {
+  # Public
+  searchProducts(query: String!): [Product!]!
+
+  # User (requires user JWT)
+  me: User
+  myRequests: [Request!]!
+  request(id: ID!): Request
+  requestMessages(requestID: ID!): [ChatMessage!]!
+  productInsights(
+    productCode: String!
+    lat: Float!
+    lon: Float!
+  ): ProductInsights!
+
+  # Merchant (requires merchant JWT)
+  merchantMe: Merchant
+  myNotifications: [MerchantNotification!]!
+  unreadNotifications: [MerchantNotification!]!
+  myInventory: [Inventory!]!
+}
+
+# ─── Mutations ───────────────────────────────────────────────────────────────
+
+type Mutation {
+  # Auth
+  registerUser(
+    email: String!
+    password: String!
+    name: String!
+    latitude: Float!
+    longitude: Float!
+    address: String!
+  ): AuthUserPayload!
+  loginUser(email: String!, password: String!): AuthUserPayload!
+  registerMerchant(
+    email: String!
+    password: String!
+    businessName: String!
+    type: MerchantType!
+    latitude: Float!
+    longitude: Float!
+    address: String!
+    city: String!
+    phone: String!
+  ): AuthMerchantPayload!
+  loginMerchant(email: String!, password: String!): AuthMerchantPayload!
+
+  # Requests
+  createRequest(
+    productCode: String!
+    productName: String!
+    quantity: Int!
+    latitude: Float!
+    longitude: Float!
+    radiusKm: Int
+  ): Request!
+  updateRequestStatus(id: ID!, status: RequestStatus!): Request!
+
+  # Chat
+  sendMessage(
+    requestID: ID!
+    content: String!
+    hasProduct: Boolean
+    canOrder: Boolean
+    price: Float
+  ): ChatMessage!
+
+  # Notifications
+  markNotificationRead(id: ID!): Boolean!
+  markAllNotificationsRead: Boolean!
+
+  # Merchant
+  goOnline: Boolean!
+  goOffline: Boolean!
+  upsertInventory(
+    productID: ID!
+    quantity: Int!
+    canOrder: Boolean!
+    price: Float
+  ): Inventory!
+}
